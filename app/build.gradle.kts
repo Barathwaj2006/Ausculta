@@ -39,11 +39,6 @@ android {
     }
 }
 
-kotlin {
-    jvmToolchain(17)
-}
-
-
 dependencies {
   val composeBom = platform(libs.androidx.compose.bom)
   implementation(composeBom)
@@ -68,7 +63,6 @@ dependencies {
   debugImplementation(libs.androidx.compose.ui.tooling)
   androidTestImplementation(libs.androidx.compose.ui.test.junit4)
   debugImplementation(libs.androidx.compose.ui.test.manifest)
-
 
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)

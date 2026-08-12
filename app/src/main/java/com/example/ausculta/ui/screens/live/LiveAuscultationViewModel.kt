@@ -14,11 +14,12 @@ class LiveAuscultationViewModel(application: Application) : AndroidViewModel(app
     val signalMetrics: StateFlow<SignalMetrics> = repository.signalMetrics
     val liveSpectrum: StateFlow<FloatArray> = repository.liveSpectrum
     val connectionState: StateFlow<DeviceConnectionState> = repository.deviceCommunicator.connectionState
+    val latestPacket: StateFlow<DevicePacket> = repository.deviceCommunicator.packetState
 
-    private val _selectedSite = MutableStateFlow(AuscultationSite.MITRAL)
+    private val _selectedSite = MutableStateFlow(AuscultationSite.ANTERIOR_CHEST)
     val selectedSite: StateFlow<AuscultationSite> = _selectedSite
 
-    private val _selectedFilter = MutableStateFlow(FilterMode.HEART_BANDPASS)
+    private val _selectedFilter = MutableStateFlow(FilterMode.WIDEBAND)
     val selectedFilter: StateFlow<FilterMode> = _selectedFilter
 
     fun setSite(site: AuscultationSite) {
@@ -29,14 +30,27 @@ class LiveAuscultationViewModel(application: Application) : AndroidViewModel(app
         _selectedFilter.value = filter
     }
 
+    fun startConnecting() {
+        repository.deviceCommunicator.startConnecting()
+    }
+
+    fun startSimulator() {
+        repository.deviceCommunicator.startSimulationMode()
+    }
+
     fun toggleRecording(onSaved: (String) -> Unit) {
         if (signalMetrics.value.isRecording) {
             viewModelScope.launch {
-                val session = repository.stopRecordingAndSave(" demo-1\, \John Doe\, _selectedSite.value, _selectedFilter.value)
- onSaved(session.id)
- }
- } else {
- repository.startRecording(getApplication())
- }
- }
+                val session = repository.stopRecordingAndSave(
+                    patientId = "user-self",
+                    patientName = "My Profile",
+                    site = _selectedSite.value,
+                    filterMode = _selectedFilter.value
+                )
+                onSaved(session.id)
+            }
+        } else {
+            repository.startRecording(getApplication())
+        }
+    }
 }

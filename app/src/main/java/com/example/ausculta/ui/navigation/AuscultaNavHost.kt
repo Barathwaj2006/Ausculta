@@ -8,6 +8,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.ausculta.ui.screens.dashboard.DashboardScreen
 import com.example.ausculta.ui.screens.dashboard.DashboardViewModel
+import com.example.ausculta.ui.screens.history.HistoryScreen
+import com.example.ausculta.ui.screens.history.HistoryViewModel
 import com.example.ausculta.ui.screens.live.LiveAuscultationScreen
 import com.example.ausculta.ui.screens.live.LiveAuscultationViewModel
 import com.example.ausculta.ui.screens.patients.PatientsScreen
@@ -26,6 +28,7 @@ fun AuscultaNavHost(
                 viewModel = vm,
                 onNavigateToLive = { navController.navigate(Screen.LiveAuscultation.route) },
                 onNavigateToSession = { id -> navController.navigate(Screen.SessionDetail.createRoute(id)) },
+                onNavigateToHistory = { navController.navigate(Screen.History.route) },
                 onNavigateToPatients = { navController.navigate(Screen.Patients.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
             )
@@ -42,9 +45,18 @@ fun AuscultaNavHost(
             )
         }
         composable(Screen.SessionDetail.route) { backStackEntry ->
-            val id = backStackEntry.arguments?.getString(\sessionId\) ?: \\
+            val id = backStackEntry.arguments?.getString("sessionId") ?: ""
             val vm: SessionDetailViewModel = viewModel()
-            SessionDetailScreen(id, vm, onBack = { navController.popBackStack() })
+            SessionDetailScreen(sessionId = id, viewModel = vm, onBack = { navController.popBackStack() })
+        }
+        composable(Screen.History.route) {
+            val vm: HistoryViewModel = viewModel()
+            HistoryScreen(
+                viewModel = vm,
+                onNavigateToSession = { id -> navController.navigate(Screen.SessionDetail.createRoute(id)) },
+                onNavigateToLive = { navController.navigate(Screen.LiveAuscultation.route) },
+                onBack = { navController.popBackStack() }
+            )
         }
         composable(Screen.Patients.route) {
             PatientsScreen(onBack = { navController.popBackStack() })

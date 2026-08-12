@@ -1,13 +1,104 @@
 package com.example.ausculta.model
 
+import kotlin.math.abs
+import kotlin.math.sqrt
+
 data class SignalMetrics(
-    val currentBpm: Int = 72,
-    val signalQualityPercentage: Int = 92,
-    val rmsEnergy: Float = 0.45f,
-    val peakFrequencyHz: Float = 65f,
-    val s1s2Confidence: Float = 0.88f,
-    val murmurProbability: Float = 0.05f,
-    val wheezeProbability: Float = 0.02f,
-    val crackleProbability: Float = 0.01f,
-    val isRecording: Boolean = false
-)
+    val rmsAmplitude: Float = 0f,
+    val peakToPeakAmplitude: Float = 0f,
+    val zeroCrossingRate: Float = 0f,
+    val meanDcOffset: Float = 0f,
+    val signalQualityScore: Int = 0,
+    val waveformStability: String = "UNSTABLE_SIGNAL",
+    val isUsableSignal: Boolean = false,
+    val spo2: Int = 0,
+    val spo2Status: String = "INSUFFICIENT_DATA",
+    val bpm: Int = 0,
+    val bpmStatus: String = "INSUFFICIENT_DATA",
+    val populationScope: String = "Adult Population (Age 18+)"
+) {
+    companion object {
+        fun calculateFromWaveform(wave: FloatArray, spo2: Int, bpm: Int, fingerContact: Boolean): SignalMetrics {
+            if (wave.isEmpty() || !fingerContact) {
+                return SignalMetrics()
+            }
+
+            // 1. Calculate DC Mean (ADC offset for analogRead GPIO34)
+            var sumAdc = 0.0
+            var minVal = Float.MAX_VALUE
+            var maxVal = -Float.MAX_VALUE
+
+            for (sample in wave) {
+                sumAdc += sample
+                if (sample < minVal) minVal = sample
+                if (sample > maxVal) maxVal = sample
+            }
+
+            val meanDc = (sumAdc / wave.size).toFloat()
+            val p2p = if (maxVal >= minVal) maxVal - minVal else 0f
+
+            // 2. Perform DC-centering signal conditioning for RMS and Zero-Crossing
+            var sumConditionedSquares = 0.0
+            var zeroCrossings = 0
+            var lastConditioned = 0f
+
+            for (i in wave.indices) {
+                val conditioned = wave[i] - meanDc
+                sumConditionedSquares += conditioned * conditioned
+                if (i > 0) {
+                    if ((lastConditioned >= 0f && conditioned < 0f) || (lastConditioned < 0f && conditioned >= 0f)) {
+                        zeroCrossings++
+                    }
+                }
+                lastConditioned = conditioned
+            }
+
+            val rms = sqrt(sumConditionedSquares / wave.size).toFloat()
+            val zcr = zeroCrossings.toFloat() / wave.size.toFloat()
+
+            val stability = when {
+                p2p < 20f -> "INSUFFICIENT_DATA"
+                p2p in 20f..3500f -> "WITHIN_RANGE"
+                else -> "UNSTABLE_SIGNAL"
+            }
+
+            val isUsable = p2p >= 20f && spo2 in 80..100 && bpm in 40..200
+            val qualityScore = when {
+                !isUsable -> 25
+                stability == "WITHIN_RANGE" && spo2 >= 95 -> 95
+                stability == "WITHIN_RANGE" -> 85
+                else -> 50
+            }
+
+            // Adult Population Deterministic Reference Ranges (18+)
+            val spo2Eval = when {
+                spo2 >= 95 -> "WITHIN_RANGE (95-100% Adult Normal)"
+                spo2 in 90..94 -> "BELOW_RANGE (90-94% Slightly Low)"
+                spo2 in 1..89 -> "BELOW_RANGE (<90% Low SpO3)"
+                else -> "INSUFFICIENT_DATA"
+            }
+
+            val bpmEval = when {
+                bpm in 60..100 -> "WITHIN_RANGE (60-100 BPM Normal Resting)"
+                bpm in 40..59 -> "BELOW_RANGE (<60 BPM Bradycardia)"
+                bpm > 100 -> "ABOVE_RANGE (<100 BPM Tachycardia)"
+                else -> "INSUFFICIENT_DATA"
+            }
+
+            return SignalMetrics(
+                rmsAmplitude = rms,
+                peakToPeakAmplitude = p2p,
+                zeroCrossingRate = zcr,
+                meanDcOffset = meanDc,
+                signalQualityScore = qualityScore,
+                waveformStability = stability,
+                isUsableSignal = isUsable,
+                spo2 = spo2,
+                spo2Status = spo2Eval,
+                bpm = bpm,
+                bpmStatus = bpmEval,
+                populationScope = "Adult Population (Age 18+)"
+            )
+        }
+    }
+}

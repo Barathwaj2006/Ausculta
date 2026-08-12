@@ -1,14 +1,9 @@
 package com.example.ausculta.model
-
-sealed class DeviceConnectionState {
-    object Disconnected : DeviceConnectionState()
-    object Scanning : DeviceConnectionState()
-    data class Connecting(val deviceName: String) : DeviceConnectionState()
-    data class Connected(
-        val deviceName: String,
-        val batteryPercentage: Int,
-        val isSimulator: Boolean = false,
-        val signalRssi: Int = -60
-    ) : DeviceConnectionState()
-    data class Error(val message: String) : DeviceConnectionState()
+ 
+enum class DeviceConnectionState(val displayName: String) {
+    DISCONNECTED("Disconnected"),
+    CONNECTING("Connecting to ESP32 Wi-Fi..."),
+    CONNECTED("Connected (ESP32 Wi-Fi)"),
+    SIMULATING("Simulation Mode (Demo)"),
+    DEVICE_UNAVAILABLE("Device Unavailable (Check Wi-Fi)")
 }

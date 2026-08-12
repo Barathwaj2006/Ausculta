@@ -4,7 +4,68 @@ import android.content.Context
 import com.example.ausculta.model.DeviceConnectionState
 import com.example.ausculta.model.DevicePacket
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlou�)�����Ё��ѱ��ํ�ɽ�ѥ��̹��չ��()����́�٥�����չ���ѽȠ(�����ɥمє�م�����ѕ�����ѕ�а(�����ɥمє�م��͍�����ɽ�ѥ��M����(���(�����ɥمє�م��ͥ�ձ�ѽȀ�����M��ձ�ѽȠ�(�����ɥمє�م�����5�����Ȁ�����	��5�����ȡ���ѕ�Ф((�����ɥمє�م��}������ѥ��Mхє��5�х���Mхѕ�����٥�������ѥ��Mхє���٥�������ѥ��Mхє��͍�����ѕ��(����م��������ѥ��Mхє�Mхѕ�����٥�������ѥ��Mхє���}������ѥ��Mхє((�����ɥمє�م��}Ʌ�A�������܀�5�х���M��ɕ������٥��A����������Ʌ	ՙ��������������(����م��Ʌ�A���������M��ɕ������٥��A��������}Ʌ�A��������((�����ɥمє�مȁ��M��ձ�ѥ���􁙅�͔((�������Ё�(��������͍������չ����(������������ͥ�ձ�ѽȹ��������ܹ������Ё������Ѐ��(����������������������M��ձ�ѥ�����(��������������������}Ʌ�A�������ܹ���С�����Ф(�����������������(�������������(���������(�����������5�����ȹ��A�����I����ٕ���������Ѐ��(�������������������M��ձ�ѥ�����(����������������͍������չ����}Ʌ�A�������ܹ���С�����Ф��(�������������(���������(�����((�����ո��х��M��ձ�ѽȠ���(����������M��ձ�ѥ������Ք(��������}������ѥ��Mхє�م�Ք���٥�������ѥ��Mхє������ѕ��(��������������٥��9�����M@�ȁ����ѥ��M��ձ�ѽȈ�(���������������ѕ��A�ɍ��х������(��������������M��ձ�ѽȀ���Ք(���������(��������ͥ�ձ�ѽȹ�х��M��ձ�ѥ���͍����(�����((�����ո��ѽ�M��ձ�ѽȠ���(��������ͥ�ձ�ѽȹ�ѽ�M��ձ�ѥ����(����������M��ձ�ѥ���􁙅�͔(��������}������ѥ��Mхє�م�Ք���٥�������ѥ��Mхє��͍�����ѕ�(�����((�����ո���͍�����Р���(��������������M��ձ�ѥ�����(�������������ѽ�M��ձ�ѽȠ�(��������􁕱͔��(���������������5�����ȹ��͍�����Р�(���������(�����)�(
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+
+class DeviceCommunicator(private val context: Context) {
+    private val httpManager = Esp32HttpManager()
+    private val simulator = Esp32Simulator()
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    private val _connectionState = MutableStateFlow(DeviceConnectionState.DISCONNECTED)
+    val connectionState: StateFlow<DeviceConnectionState> = _connectionState
+
+    private val _packetState = MutableStateFlow(DevicePacket())
+    val packetState: StateFlow<DevicePacket> = _packetState
+
+    private var isSimulating = false
+
+    init {
+        scope.launch {
+            httpManager.connectionState.collect { state ->
+                if (!isSimulating) {
+                    _connectionState.value = state
+                }
+            }
+        }
+        scope.launch {
+            httpManager.latestPacket.collect { packet ->
+                if (!isSimulating) {
+                    _packetState.value = packet
+                }
+            }
+        }
+    }
+
+    fun startConnecting() {
+        if (isSimulating) {
+            simulator.stop()
+            isSimulating = false
+        }
+        _connectionState.value = DeviceConnectionState.CONNECTING
+        httpManager.connect()
+    }
+
+    fun startSimulationMode() {
+        httpManager.disconnect()
+        isSimulating = true
+        _connectionState.value = DeviceConnectionState.SIMULATING
+        simulator.start { packet ->
+            if (isSimulating) {
+                _packetState.value = packet
+            }
+        }
+    }
+
+    fun disconnect() {
+        if (isSimulating) {
+            simulator.stop()
+            isSimulating = false
+        }
+        httpManager.disconnect()
+        _connectionState.value = DeviceConnectionState.DISCONNECTED
+    }
+}

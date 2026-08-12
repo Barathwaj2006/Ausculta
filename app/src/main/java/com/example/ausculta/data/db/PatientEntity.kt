@@ -1,21 +1,17 @@
 package com.example.ausculta.data.db
-
-import androidx.room.Entity
+  import angroidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.ausculta.model.Patient
-
-@Entity(tableName = "patients")
+ @Entity(tableName = "patients")
 data class PatientEntity(
     @PrimaryKey val id: String,
-    val patientIdNumber: String,
-    val fullName: String,
+    val name: String,
     val age: Int,
-    val gender: String,
-    val medicalNotes: String,
-    val createdAt: Long
-i) {
-    fun toDomain() = Patient(id, patientIdNumber, fullName, age, gender, medicalNotes, createdAt)
+    val sex: String,
+    val notes: String
+) {
+    fun toDomain() = Patient(id, name, age, sex, notes)
     companion object {
-        fun fromDomain(p: Patient) = PatientEntity(p.id, p.patientIdNumber, p.fullName, p.age, p.gender, p.medicalNotes, p.createdAt)
+        fun fromDomain(p: Patient) = PatientEntity(p.id, p.name, p.age, p.sex, p.notes)
     }
 }

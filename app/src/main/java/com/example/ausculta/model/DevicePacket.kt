@@ -1,22 +1,37 @@
 package com.example.ausculta.model
 
+import com.google.gson.annotations.SerializedName
+
 data class DevicePacket(
-    val sequenceNumber: Long,
-    val audioSamples: ShortArray,
-    val ecgSample: Int = 512,
-    val batteryLevel: Int = 95,
-    val isValidCrc: Boolean = true,
+    @SerializedName("wave")
+    val wave: FloatArray = FloatArray(0),
+    @SerializedName("spo2")
+    val spo2: Int = 0,
+    @SerializedName("bpm")
+    val bpm: Int = 0,
+    @SerializedName("finger")
+    val finger: Boolean = false,
+    @SerializedName("active")
+    val active: Boolean = false,
     val timestampMs: Long = System.currentTimeMillis()
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
         other as DevicePacket
-        return sequenceNumber == other.sequenceNumber && audioSamples.contentEquals(other.audioSamples)
+        return wave.contentEquals(other.wave) &&
+                spo2 == other.spo2 &&
+                bpm == other.bpm &&
+                finger == other.finger &&
+                active == other.active
     }
+
     override fun hashCode(): Int {
-        var result = sequenceNumber.hashCode()
-        result = 31 * result + audioSamples.contentHashCode()
+        var result = wave.contentHashCode()
+        result = 31 * result + spo2
+        result = 31 * result + bpm
+        result = 31 * result + finger.hashCode()
+        result = 31 * result + active.hashCode()
         return result
     }
 }

@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import com.example.ausculta.data.DataRepository
 import com.example.ausculta.model.DeviceConnectionState
+import com.example.ausculta.model.DevicePacket
 import com.example.ausculta.model.Patient
 import com.example.ausculta.model.Session
 import kotlinx.coroutines.flow.Flow
@@ -13,11 +14,16 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private val repository = DataRepository(application)
 
     val connectionState: StateFlow<DeviceConnectionState> = repository.deviceCommunicator.connectionState
+    val packetState: StateFlow<DevicePacket> = repository.deviceCommunicator.packetState
     val recentSessions: Flow<List<Session>> = repository.sessions
     val patients: Flow<List<Patient>> = repository.patients
 
-    fun connectSimulator() {
-        repository.deviceCommunicator.startSimulator()
+    fun connectDevice() {
+        repository.deviceCommunicator.startConnecting()
+    }
+
+    fun startSimulator() {
+        repository.deviceCommunicator.startSimulationMode()
     }
 
     fun disconnect() {

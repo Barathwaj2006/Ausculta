@@ -1,39 +1,112 @@
 package com.example.ausculta.ui.components
 
-import androidx.compose.foundation.bakground
-import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ausculta.model.DeviceConnectionState
-import com.example.ausculta.ui.theme.*J
+import com.example.ausculta.theme.*
+
 @Composable
 fun DeviceStatusCard(
-    state: DeviceConnectionState,
-    onConnectSimulator: () -> Unit,
-    onDisconnect: () -> Unit,
+    connectionState: DeviceConnectionState,
+    isFingerContact: Boolean,
+    onConnectClick: () -> Unit,
+    onToggleSimulator: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val statusColor = when (connectionState) {
+        DeviceConnectionState.CONNECTED -> OxygenTeal
+        DeviceConnectionState.SIMULATING -> ElectricCyan400
+        DeviceConnectionState.CONNECTING -> WarningAmber
+        DeviceConnectionState.DISCONNECTED -> Slate400
+        DeviceConnectionState.DEVICE_UNAVAILABLE -> ErrorRose
+    }
+
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .border(1.dp, SlateBorder, RoundedCornerShape(16.dp)),
-        colors = CardDefaults.cardColors(containerColor0= SlateCard)
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Slate800),
+        shape = RoundedCornerShape(16.dp),
+        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate700))
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertical
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(12.dp)
-                    .background(
-                        when (state) {
-                            is DeviceConnectionState.Connected -> EmeralGy�^�ɕ��(�����������������������������́�٥�������ѥ��Mхє������ѥ�����́�٥�������ѥ��Mхє�M�����������兹�����(������������������������������͔����Aձ͕I��(��������������������������(������������������������I�չ����ɹ��M�����ع���(���������������������(�������������(������������M����ȡ5������ȹݥ�Ѡ��ȹ����(��������������յ���������Ȁ�5������ȹݕ���РŘ����(����������������Q��Р(��������������������ѕ�Ѐ�ݡ�����хє���(�������������������������́�٥�������ѥ��Mхє������ѕ������хє���٥��9���(�������������������������́�٥�������ѥ��Mхє������ѥ������������ѥ���Ѽ����хє���٥��9��������(�������������������������́�٥�������ѥ��Mхє�M������������M����������ȁM@�ȁMѕѡ�͍�������(��������������������������͔������͍�����ѕ��(����������������������(������������������������]����Ѐ����]����й	����(������������������������Ȁ�Q���Aɥ����(�����������������(����������������Q��Р(��������������������ѕ�Ѐ�ݡ�����хє���(�������������������������́�٥�������ѥ��Mхє������ѕ�����������хє���M��ձ�ѽȤ�����ѥ��M��ձ�ѽȁ�ѥٔ���͔�	1������ѕ������хє����ѕ��A�ɍ��х������(��������������������������͔�����I����Ѽ����ȁM@�ȁ��ɑ݅ɔ�(����������������������(������������������������M�销��ȹ���(������������������������Ȁ�Q���M��������(�����������������(�������������(�����������������хє��́�٥�������ѥ��Mхє������ѕ����(����������������=�ѱ����	��ѽ��(���������������������������􁽹�͍�����а(�������������������������̀�	��ѽ����ձ�̹��ѱ����	��ѽ�����̡���ѕ�����Ȁ�Aձ͕I���(�������������������(�������������������Q��Р��͍�����Ј�(�����������������(������������􁕱͔��(����������������	��ѽ��(���������������������������􁽹������M��ձ�ѽȰ(�������������������������̀�	��ѽ����ձ�̹���ѽ�����̡���х�����������兹����а����ѕ�����Ȁ�M��ѕ�ɬ�(�������������������(��������������������Q��Р�Mх�ЁM��ձ�ѽȈ�(�����������������(�������������(���������(�����)�(
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(CircleShape)
+                            .background(statusColor)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = connectionState.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Slate100,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                if (connectionState == DeviceConnectionState.DISCONNECTED || connectionState == DeviceConnectionState.DEVICE_UNAVAILABLE) {
+                    Button(
+                        onClick = onConnectClick,
+                        colors = ButtonDefaults.buttonColors(containerColor = ElectricCyan500, contentColor = Slate950),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("Connect", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Protocol: Wi-Fi SoftAP HTTP (192.168.4.1)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Slate400
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
+                        Text("Sensor Contact: ", style = MaterialTheme.typography.bodyMedium, color = Slate400)
+                        Text(
+                            text = if (isFingerContact) "Firm Contact" else "Loss of Contact",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isFingerContact) OxygenTeal else ErrorRose,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                TextButton(onClick = onToggleSimulator) {
+                    Text(
+                        text = if (connectionState == DeviceConnectionState.SIMULATING) "Use Real Wi-Fi AP" else "Dev Simulator",
+                        color = ElectricCyan400,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        }
+    }
+}

@@ -1,8 +1,10 @@
 package com.example.ausculta.ui.screens.session
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.ausculta.ai.ClinicalDiagnosticEngine
 import com.example.ausculta.data.DataRepository
 import com.example.ausculta.model.AiAnalysisResult
 import com.example.ausculta.model.Session
@@ -12,7 +14,6 @@ import java.io.File
 
 class SessionDetailViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = DataRepository(application)
-
     private val _session = MutableStateFlow<Session?>(null)
     val session: StateFlow<Session?> = _session
 
@@ -25,7 +26,12 @@ class SessionDetailViewModel(application: Application) : AndroidViewModel(applic
     fun loadSession(sessionId: String) {
         viewModelScope.launch {
             repository.sessions.collect { list ->
-                _session.value = list.find { it.id == sessionId }
+                val s = list.find { it.id == sessionId }
+                _session.value = s
+                if (s != null && _aiResult.value == null) {
+                    val deterministicEngine = ClinicalDiagnosticEngine()
+                    _aiResult.value = deterministicEngine.generateDeterministicSummary(s)
+                }
             }
         }
     }
@@ -48,7 +54,12 @@ class SessionDetailViewModel(application: Application) : AndroidViewModel(applic
 
     fun generatePdf(): File? {
         val s = _session.value ?: return null
-        val ai = _aiResult.value ?: return null
+        val ai = _aiResult.value ?: ClinicalDiagnosticEngine().generateDeterministicSummary(s)
         return repository.generatePdf(s, ai)
+    }
+
+    fun shareReportViaWhatsApp(context: Context) {
+        val pdfFile = generatePdf() ?: return
+        repository.sharePdf(context, pdfFile)
     }
 }

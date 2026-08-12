@@ -20,12 +20,12 @@ import kotlinx.coroutines.flow.*
 import java.io.File
 
 class DataRepository(private val context: Context) {
-    private val scope = CoroutineScope(Dispatchers.IO + Job())
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val db = AppDatabase.getDatabase(context)
     private val patientDao = db.patientDao()
     private val sessionDao = db.sessionDao()
 
-    val deviceCommunicator = DeviceCommunicator(context, scope)
+    val deviceCommunicator = DeviceCommunicator(context)
     val audioPlayer = AudioPlayerManager(context)
     private val geminiAi = GeminiAiService(context)
     private val clinicalEngine = ClinicalDiagnosticEngine()
@@ -55,7 +55,7 @@ class DataRepository(private val context: Context) {
 
     init {
         scope.launch {
-            deviceCommunicator.rawPacketFlow.collect { packet ->
+            deviceCommunicator.packetState.collect { packet ->
                 processIncomingPacket(packet)
             }
         }
@@ -63,92 +63,139 @@ class DataRepository(private val context: Context) {
     }
 
     private fun processIncomingPacket(packet: DevicePacket) {
-        val heartSummary = heartAnalyzer.analyzeBatch(packet.audioSamples)
-        val lungSummary = lungAnalyzer.analyzeBatch(packet.audioSamples)
-        val spectrum = FftCalculator.computeSpectrum16(packet.audioSamples)
+        val heartSummary = heartAnalyzer.analyzeBatch(packet.wave)
+        val lungSummary = lungAnalyzer.analyzeBatch(packet.wave)
+        val spectrum = FftCalculator.computeSpectrum16(packet.wave)
         _liveSpectrum.value = spectrum
 
         _signalMetrics.value = _signalMetrics.value.copy(
-            currentBpm = heartSummary.bpm,
+            currentBpm = packet.bpm,
+            spo2 = packet.spo2,
+            fingerDetected = packet.finger,
+            sensorActive = packet.active,
             rmsEnergy = heartSummary.rmsEnergy,
             murmurProbability = heartSummary.murmurProbability,
             wheezeProbability = lungSummary.wheezeProbability,
             crackleProbability = lungSummary.crackleProbability
         )
 
-        currentWavEncoder?.appendSamples(packet.audioSamples)
+        currentWavEncoder?.appendSamples(packet.wave)
     }
 
     fun startRecording(context: Context): File {
-        val dir = File(context.filesDir, " recordings\)
- if (!dir.exists()) dir.mkdirs()
- val file = File(dir, \ausculta_\ + System.currentTimeMillis() + \.wav\)
- currentRecordingFile = file
- currentWavEncoder = WavAudioEncoder(file, 4000).apply { startEncoding() }
- recordingStartTimeMs = System.currentTimeMillis()
- _signalMetrics.value = _signalMetrics.value.copy(isRecording = true)
- return file
- }
+        val dir = File(context.filesDir, "recordings")
+        if (!dir.exists()) dir.mkdirs()
+        val file = File(dir, "ausculta_${System.currentTimeMillis()}.wav")
+        currentRecordingFile = file
+        currentWavEncoder = WavAudioEncoder(file, 4000).apply { startEncoding() }
+        recordingStartTimeMs = System.currentTimeMillis()
+        _signalMetrics.value = _signalMetrics.value.copy(isRecording = true)
+        return file
+    }
 
- suspend fun stopRecordingAndSave(
- patientId: String,
- patientName: String,
- site: AuscultationSite,
- filterMode: FilterMode
- ): Session {
- currentWavEncoder?.stopEncoding()
- currentWavEncoder = null
- _signalMetrics.value = _signalMetrics.value.copy(isRecording = false)
- val durationSecs = ((System.currentTimeMillis() - recordingStartTimeMs) / 1000).toInt().coerceAtLeast(1)
+    suspend fun stopRecordingAndSave(
+        patientId: String,
+        patientName: String,
+        patientAge: Int = 30,
+        patientSex: String = "Male",
+        examinationType: String = "Chest & Lung Auscultation",
+        site: AuscultationSite = AuscultationSite.ANTERIOR_CHEST,
+        filterMode: FilterMode = FilterMode.WIDEBAND
+    ): Session {
+        currentWavEncoder?.stopEncoding()
+        currentWavEncoder = null
+        _signalMetrics.value = _signalMetrics.value.copy(isRecording = false)
+        val endTimeMs = System.currentTimeMillis()
+        val durationSeconds = ((endTimeMs - recordingStartTimeMs) / 1000).coerceAtLeast(1)
 
- val metrics = _signalMetrics.value
- val session = Session(
- patientId = patientId,
- patientName = patientName,
- site = site,
- filterMode = filterMode,
- durationSeconds = durationSecs,
- averageHeartRateBpm = metrics.currentBpm,
- signalQualityScore = metrics.signalQualityPercentage,
- audioFilePath = currentRecordingFile?.absolutePath ?: \\,
- s1s2Detected = true,
- murmurDetected = metrics.murmurProbability > 0.3f,
- wheezeDetected = metrics.wheezeProbability > 0.3f,
- crackleDetected = metrics.crackleProbability > 0.3f,
- aiSummary = \Auscultation recording completed at \ + site.displayName + \.\
- )
- sessionDao.insertSession(SessionEntity.fromDomain(session))
- return session
- }
+        val metrics = _signalMetrics.value
+        val session = Session(
+            patientId = patientId,
+            patientName = patientName,
+            patientAge = patientAge,
+            patientSex = patientSex,
+            examinationType = examinationType,
+            site = site,
+            filterMode = filterMode,
+            startTimestampMs = recordingStartTimeMs,
+            endTimestampMs = endTimeMs,
+            durationSeconds = durationSeconds,
+            deviceStatus = deviceCommunicator.connectionState.value.displayName,
+            deviceIdentifier = "ESP32-SoftAP (192.168.4.1)",
+            spo2 = metrics.spo2,
+            spo2Status = metrics.getSpo2StatusText(),
+            bpm = metrics.currentBpm,
+            bpmStatus = metrics.getBpmStatusText(),
+            signalQualityScore = metrics.signalQualityPercentage,
+            waveformStability = metrics.getWaveformStabilityText(),
+            isUsableSignal = metrics.isUsableSignal(),
+            sampleCount = 200,
+            waveDataCsv = "",
+            audioFilePath = currentRecordingFile?.absolutePath ?: "",
+            aiSummary = "Auscultation recording completed for ${site.displayName}."
+        )
+        sessionDao.insertSession(SessionEntity.fromDomain(session))
+        return session
+    }
 
- suspend fun runAiAnalysis(session: Session): AiAnalysisResult {
- val key = secureStorage.getApiKey()
- val result = if (!key.isNullOrEmpty()) {
- geminiAi.analyzeSession(session, key)
- } else {
- clinicalEngine.analyzeOffline(session)
- }
- val updated = session.copy(aiSummary = result.primaryImpression)
- sessionDao.insertSession(SessionEntity.fromDomain(updated))
- return result
- }
+    suspend fun runAiAnalysis(session: Session): AiAnalysisResult {
+        val key = secureStorage.getApiKey()
+        val result = if (!key.isNullOrEmpty()) {
+            geminiAi.analyzeSession(session, key)
+        } else {
+            clinicalEngine.generateDeterministicSummary(session)
+        }
+        val updated = session.copy(aiSummary = result.summaryDetails)
+        sessionDao.insertSession(SessionEntity.fromDomain(updated))
+        return result
+    }
 
- fun generatePdf(session: Session, aiResult: AiAnalysisResult): File {
- return pdfGenerator.generateReport(session, aiResult)
- }
+    fun generatePdf(session: Session, aiResult: AiAnalysisResult): File {
+        return pdfGenerator.generateReport(session, aiResult)
+    }
 
- suspend fun addPatient(patient: Patient) {
- patientDao.insertPatient(PatientEntity.fromDomain(patient))
- }
+    fun sharePdf(context: Context, pdfFile: File) {
+        pdfGenerator.shareReportViaIntent(context, pdfFile)
+    }
 
- private suspend fun seedInitialData() {
- if (patientDao.getPatientById(\demo-1\) == null) {
- patientDao.insertPatient(PatientEntity(\demo-1\, \PT-9841\, \John Doe\, 45, \Male\, \No prior cardiac history\, System.currentTimeMillis()))
- sessionDao.insertSession(SessionEntity(
- \id-demo-1\, \demo-1\, \John Doe\, \MITRAL\, \HEART_BANDPASS\, 30, 72, 95,
- \\, s1s2Detected = true, murmurDetected = false, wheezeDetected = false, crackleDetected = false,
- 60f, \Normal S1/S2 acoustics with no murmurs.\, System.currentTimeMillis()
- ))
- }
- }
+    fun getAllSessions(): Flow<List<Session>> = sessions
+
+    suspend fun addPatient(patient: Patient) {
+        patientDao.insertPatient(PatientEntity.fromDomain(patient))
+    }
+
+    private suspend fun seedInitialData() {
+        if (patientDao.getPatientById("user-self") == null) {
+            patientDao.insertPatient(PatientEntity("user-self", "My Profile", 30, "Male", "Personal Baseline Records"))
+            sessionDao.insertSession(SessionEntity(
+                id = "id-demo-1",
+                patientId = "user-self",
+                patientName = "My Profile",
+                patientAge = 30,
+                patientSex = "Male",
+                examinationType = "Baseline Respiratory Check",
+                siteName = AuscultationSite.ANTERIOR_CHEST.name,
+                filterModeName = FilterMode.WIDEBAND.name,
+                startTimestampMs = System.currentTimeMillis() - 86400000,
+                endTimestampMs = System.currentTimeMillis() - 86370000,
+                durationSeconds = 30,
+                appSessionId = "SESSION-BASELINE-01",
+                appVersion = "1.0.0",
+                deviceStatus = "Connected (Wi-Fi AP)",
+                deviceIdentifier = "ESP32-SoftAP (192.168.4.1)",
+                spo2 = 98,
+                spo2Status = "Within Reference Range (95-100%)",
+                bpm = 72,
+                bpmStatus = "Within Reference Range (60-100 BPM)",
+                signalQualityScore = 95,
+                waveformStability = "Stable Waveform",
+                isUsableSignal = true,
+                sampleCount = 200,
+                waveDataCsv = "",
+                audioFilePath = "",
+                aiSummary = "Waveform and physiological metrics evaluated deterministically within expected reference range.",
+                reportPath = ""
+            ))
+        }
+    }
 }
