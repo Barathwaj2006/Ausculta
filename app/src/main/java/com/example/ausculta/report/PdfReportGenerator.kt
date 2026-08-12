@@ -47,7 +47,7 @@ class PdfReportGenerator(private val context: Context) {
         paint.isBoldText = true
         canvas.drawText("Physiological Measurements & Reference Ranges:", 40f, 198f, paint)
         paint.isBoldText = false
-        canvas.drawText("* SpO2: " + session.spo2 + "% - " + session.po2Status, 50f, 218f, paint)
+        canvas.drawText("* SpO2: " + session.spo2 + "% - " + session.spo2Status, 50f, 218f, paint)
         canvas.drawText("* Pulse Rate: " + session.bpm + " BPM - " + session.bpmStatus, 50f, 238f, paint)
         canvas.drawText("* Acoustic Signal Quality: " + session.signalQualityScore + "% (" + session.waveformStability + ")", 50f, 258f, paint)
 
@@ -57,7 +57,7 @@ class PdfReportGenerator(private val context: Context) {
         paint.isBoldText = false
         canvas.drawText(aiResult.summaryTitle, 50f, 315f, paint)
         canvas.drawText(aiResult.summaryDetails, 50f, 335f, paint)
-        canvas.drawText("* " + aiResult.po2Interpretation, 50f, 355f, paint)
+        canvas.drawText("* " + aiResult.spo2Interpretation, 50f, 355f, paint)
         canvas.drawText("* " + aiResult.pulseInterpretation, 50f, 375f, paint)
 
         canvas.drawLine(40f, 400f, 555f, 400f, paint)
@@ -79,6 +79,10 @@ class PdfReportGenerator(private val context: Context) {
         return file
     }
 
+    /**
+     * Shares examination report via standard Android system Intent (FileProvider).
+     * Dispatches to any app registered for PDF files (including WhatsApp, Email, Drive).
+     */
     fun shareReportViaIntent(context: Context, pdfFile: File) {
         try {
             val uri = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", pdfFile)
@@ -87,7 +91,7 @@ class PdfReportGenerator(private val context: Context) {
                 putExtra(Intent.EXTRA_STREAM, uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            val chooser = Intent.createChooser(shareIntent, "Share Examination Report via WhatsApp / Email")
+            val chooser = Intent.createChooser(shareIntent, "Share Examination Report")
             chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(chooser)
         } catch (e: Exception) {

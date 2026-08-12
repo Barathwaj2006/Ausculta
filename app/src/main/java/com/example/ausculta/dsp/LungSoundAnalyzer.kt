@@ -2,13 +2,26 @@ package com.example.ausculta.dsp
 
 import kotlin.math.sqrt
 
-class LungSoundAnalyzer(private val sampleRateHz: Int = 4000) {
+/**
+ * Acoustic analysis helper for raw 1 kHz ESP32 ADC readings (GPIO34).
+ * NOTE: Wheeze and crackle estimations are strictly Experimental Acoustic Metrics
+ * for personal self-monitoring and are NOT clinically validated diagnoses.
+ */
+class LungSoundAnalyzer(private val sampleRateHz: Int = 1000) {
     private val biquad = BiquadFilter(sampleRateHz.toFloat()).apply {
-        configureBandpass(100f, 1000f)
+        configureBandpass(100f, 450f)
     }
 
-    fun analyzeBatch(samples: ShortArray): AnalysisSummary {
-        val filtered = biquad.processArray(samples)
+    fun analyzeBatch(samples: FloatArray): AnalysisSummary {
+        if (samples.isEmpty()) return AnalysisSummary(0.01f, 0f, 0f)
+
+        // Subtract DC mean offset for raw ADC readings
+        val mean = samples.average().toFloat()
+        val conditioned = ShortArray(samples.size) { i ->
+            ((samples[i] - mean).coerceIn(-32768f, 32767f)).toInt().toShort()
+        }
+
+        val filtered = biquad.processArray(conditioned)
         var totalEnergy = 0.0
         var cracklePeaks = 0
 

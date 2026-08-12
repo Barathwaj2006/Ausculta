@@ -1,8 +1,10 @@
 package com.example.ausculta.data.db
-  import angroidx.room.Entity
+
+import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.ausculta.model.Patient
- @Entity(tableName = "patients")
+
+@Entity(tableName = "patients")
 data class PatientEntity(
     @PrimaryKey val id: String,
     val name: String,
@@ -11,6 +13,7 @@ data class PatientEntity(
     val notes: String
 ) {
     fun toDomain() = Patient(id, name, age, sex, notes)
+
     companion object {
         fun fromDomain(p: Patient) = PatientEntity(p.id, p.name, p.age, p.sex, p.notes)
     }

@@ -17,13 +17,18 @@ data class SignalMetrics(
     val bpmStatus: String = "INSUFFICIENT_DATA",
     val populationScope: String = "Adult Population (Age 18+)"
 ) {
+    fun getSpo2StatusText(): String = spo2Status
+    fun getBpmStatusText(): String = bpmStatus
+    fun getWaveformStabilityText(): String = waveformStability
+    fun isUsableSignal(): Boolean = isUsableSignal
+
     companion object {
         fun calculateFromWaveform(wave: FloatArray, spo2: Int, bpm: Int, fingerContact: Boolean): SignalMetrics {
             if (wave.isEmpty() || !fingerContact) {
                 return SignalMetrics()
             }
 
-            // 1. Calculate DC Mean (ADC offset for analogRead GPIO34)
+            // 1. Calculate DC Mean (raw ADC offset for analogRead GPIO34, range 0..4095)
             var sumAdc = 0.0
             var minVal = Float.MAX_VALUE
             var maxVal = -Float.MAX_VALUE
@@ -37,7 +42,7 @@ data class SignalMetrics(
             val meanDc = (sumAdc / wave.size).toFloat()
             val p2p = if (maxVal >= minVal) maxVal - minVal else 0f
 
-            // 2. Perform DC-centering signal conditioning for RMS and Zero-Crossing
+            // 2. DC-centering signal conditioning
             var sumConditionedSquares = 0.0
             var zeroCrossings = 0
             var lastConditioned = 0f
@@ -58,30 +63,29 @@ data class SignalMetrics(
 
             val stability = when {
                 p2p < 20f -> "INSUFFICIENT_DATA"
-                p2p in 20f..3500f -> "WITHIN_RANGE"
+                p2p in 20f..3500f -> "STABLE_SIGNAL"
                 else -> "UNSTABLE_SIGNAL"
             }
 
             val isUsable = p2p >= 20f && spo2 in 80..100 && bpm in 40..200
             val qualityScore = when {
                 !isUsable -> 25
-                stability == "WITHIN_RANGE" && spo2 >= 95 -> 95
-                stability == "WITHIN_RANGE" -> 85
+                stability == "STABLE_SIGNAL" && spo2 >= 95 -> 95
+                stability == "STABLE_SIGNAL" -> 85
                 else -> 50
             }
 
-            // Adult Population Deterministic Reference Ranges (18+)
             val spo2Eval = when {
                 spo2 >= 95 -> "WITHIN_RANGE (95-100% Adult Normal)"
                 spo2 in 90..94 -> "BELOW_RANGE (90-94% Slightly Low)"
-                spo2 in 1..89 -> "BELOW_RANGE (<90% Low SpO3)"
+                spo2 in 1..89 -> "BELOW_RANGE (<90% Low SpO2)"
                 else -> "INSUFFICIENT_DATA"
             }
 
             val bpmEval = when {
                 bpm in 60..100 -> "WITHIN_RANGE (60-100 BPM Normal Resting)"
                 bpm in 40..59 -> "BELOW_RANGE (<60 BPM Bradycardia)"
-                bpm > 100 -> "ABOVE_RANGE (<100 BPM Tachycardia)"
+                bpm > 100 -> "ABOVE_RANGE (>100 BPM Tachycardia)"
                 else -> "INSUFFICIENT_DATA"
             }
 

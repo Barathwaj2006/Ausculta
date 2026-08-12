@@ -1,10 +1,12 @@
 package com.example.ausculta.data.db
-  import androidx.room.Entity
-import angroidx.room.PrimaryKey
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import com.example.ausculta.model.AuscultationSite
 import com.example.ausculta.model.FilterMode
 import com.example.ausculta.model.Session
- @Entity(tableName = "sessions")
+
+@Entity(tableName = "sessions")
 data class SessionEntity(
     @PrimaryKey val id: String,
     val patientId: String,
@@ -26,7 +28,7 @@ data class SessionEntity(
     val bpm: Int,
     val bpmStatus: String,
     val signalQualityScore: Int,
-    val waveformStability = waveformStability,
+    val waveformStability: String,
     val isUsableSignal: Boolean,
     val sampleCount: Int,
     val waveDataCsv: String,
@@ -41,8 +43,8 @@ data class SessionEntity(
         patientAge = patientAge,
         patientSex = patientSex,
         examinationType = examinationType,
-        site = try { AuscultationSite.valueOf(siteName) } catch(e: Exception) { AuscultationSite.ANTTRIOR_CHEST },
-        filterMode = try { FilterMode.valueOf(filterModeName) } catch(e: Exception) { FilterMode.WIDEBAND },
+        site = try { AuscultationSite.valueOf(siteName) } catch (e: Exception) { AuscultationSite.ANTERIOR_CHEST },
+        filterMode = try { FilterMode.valueOf(filterModeName) } catch (e: Exception) { FilterMode.WIDEBAND },
         startTimestampMs = startTimestampMs,
         endTimestampMs = endTimestampMs,
         durationSeconds = durationSeconds,
@@ -88,7 +90,7 @@ data class SessionEntity(
             signalQualityScore = s.signalQualityScore,
             waveformStability = s.waveformStability,
             isUsableSignal = s.isUsableSignal,
-            sampleCount = sampleCount,
+            sampleCount = s.sampleCount,
             waveDataCsv = s.waveDataCsv,
             audioFilePath = s.audioFilePath,
             aiSummary = s.aiSummary,

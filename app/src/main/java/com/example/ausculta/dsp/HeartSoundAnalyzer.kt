@@ -3,7 +3,12 @@ package com.example.ausculta.dsp
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-class HeartSoundAnalyzer(private val sampleRateHz: Int = 4000) {
+/**
+ * Acoustic analysis helper for raw 1 kHz ESP32 ADC readings (GPIO34).
+ * NOTE: Estimated metrics (e.g. murmur ratio) are strictly Experimental Acoustic Metrics
+ * for personal self-monitoring and are NOT clinically validated diagnoses.
+ */
+class HeartSoundAnalyzer(private val sampleRateHz: Int = 1000) {
     private val biquad = BiquadFilter(sampleRateHz.toFloat()).apply {
         configureBandpass(20f, 200f)
     }
@@ -11,9 +16,17 @@ class HeartSoundAnalyzer(private val sampleRateHz: Int = 4000) {
     private var recentPeaks = mutableListOf<Long>()
     private var lastPeakTimeMs = 0L
 
-    fun analyzeBatch(samples: ShortArray): AnalysisSummary {
+    fun analyzeBatch(samples: FloatArray): AnalysisSummary {
+        if (samples.isEmpty()) return AnalysisSummary(72, 0f, false, 0.02f)
+
+        // Subtract DC mean offset for raw ADC readings
+        val mean = samples.average().toFloat()
+        val conditioned = ShortArray(samples.size) { i ->
+            ((samples[i] - mean).coerceIn(-32768f, 32767f)).toInt().toShort()
+        }
+
         var totalEnergy = 0.0
-        val filtered = biquad.processArray(samples)
+        val filtered = biquad.processArray(conditioned)
 
         for (s in filtered) {
             totalEnergy += s * s
@@ -45,13 +58,13 @@ class HeartSoundAnalyzer(private val sampleRateHz: Int = 4000) {
             }
         }
 
-        val murmurRatio = if (rms > 0.35f) (rms - 0.35f) * 1.5f else 0.02f
+        val experimentalMurmurRatio = if (rms > 0.35f) (rms - 0.35f) * 1.5f else 0.02f
 
         return AnalysisSummary(
             bpm = bpm,
             rmsEnergy = rms,
             isPeakDetected = maxPeak > 8000,
-            murmurProbability = murmurRatio.coerceIn(0f, 1f)
+            murmurProbability = experimentalMurmurRatio.coerceIn(0f, 1f)
         )
     }
 
