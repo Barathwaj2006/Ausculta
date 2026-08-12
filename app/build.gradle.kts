@@ -1,7 +1,16 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
   alias(libs.plugins.kotlin.serialization)
+}
+
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -17,10 +26,13 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("release.keystore.jks")
-            storePassword = "AuscultaKeyPass123!"
-            keyAlias = "ausculta_release"
-            keyPassword = "AuscultaKeyPass123!"
+            val ksPath = keystoreProperties.getProperty("storeFile")
+            if (ksPath != null) {
+                storeFile = file(ksPath)
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
         }
     }
 
