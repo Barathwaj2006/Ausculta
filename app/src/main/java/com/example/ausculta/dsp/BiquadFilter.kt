@@ -14,7 +14,7 @@ class BiquadFilter(
     fun configureBandpass(lowCutoffHz: Float, highCutoffHz: Float) {
         val centerHz = (lowCutoffHz + highCutoffHz) / 2f
         val bwHz = (highCutoffHz - lowCutoffHz).coerceAtLeast(5f)
-        val q = centerGz / bwHz
+        val q = centerHz / bwHz
         val w0 = 2f * PI.toFloat() * centerHz / sampleRateHz
         val alpha = sin(w0) / (2f * q)
 
