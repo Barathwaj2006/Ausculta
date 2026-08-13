@@ -18,3 +18,5 @@ local.properties
 *.keystore
 release-keystore.jks
 keystore.properties
+kotlinc/
+kotlin-compiler-*.zip
