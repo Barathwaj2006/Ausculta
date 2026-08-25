@@ -1,4 +1,4 @@
-import { DeviceConnectionState, DevicePacket, Esp32Config } from '../types';
+import { DeviceConnectionState, DevicePacket, Esp32Config } from '../types/index';
 import { Esp32Simulator } from './Esp32Simulator';
 
 export class DeviceCommunicator {

@@ -1,4 +1,4 @@
-import { DevicePacket } from '../types';
+import { DevicePacket } from '../types/index';
 
 export class Esp32Simulator {
   private timerId: any = null;
@@ -11,11 +11,11 @@ export class Esp32Simulator {
     this.phase = 0;
 
     const intervalMs = 100;
+    const waveLength = 200;
+    const wave: number[] = new Array(waveLength);
     this.timerId = setInterval(() => {
       if (!this.isRunning) return;
 
-      const waveLength = 200;
-      const wave: number[] = new Array(waveLength);
       for (let i = 0; i < waveLength; i++) {
         const t = this.phase + i * 0.05;
         // Cardiac acoustic waveform with harmonic components and subtle baseline noise
