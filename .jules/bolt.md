@@ -1,0 +1,3 @@
+## 2025-02-23 - [Trigonometric bottlenecks in real-time DSP]
+**Learning:** Performing `Math.cos()` and `Math.sin()` repeatedly in a tight loop for FFT calculations on a high-frequency continuous stream can be a significant CPU bottleneck. Since FFT bins and sample points are constant for our use case (16 bins * 128 samples), these calculations are completely predictable.
+**Action:** Always precompute static mathematical transformations (like sine and cosine waves for frequency analysis) into Float32Array lookup tables. This turns expensive function calls into O(1) memory access, significantly speeding up real-time packet processing without sacrificing code readability.
