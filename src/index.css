@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-slate-950: #0B0F17;
+    --color-slate-900: #0F172A;
+    --color-slate-800: #1E293B;
+    --color-slate-700: #334155;
+    --color-slate-600: #475569;
+    --color-slate-400: #94A3B8;
+    --color-slate-200: #E2E8F0;
+    --color-slate-100: #F8FAFC;
+
+    --color-cyan-500: #06B6D4;
+    --color-cyan-400: #22D3EE;
+    --color-cyan-300: #67E8F9;
+    --color-cyan-glow: rgba(6, 182, 212, 0.2);
+
+    --color-heart-pink: #F43F5E;
+    --color-oxygen-teal: #10B981;
+    --color-warning-amber: #F59E0B;
+    --color-error-rose: #EF4444;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #0B0F17;
+    color: #F8FAFC;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0F172A;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Phosphor pulse animation for medical oscilloscope */
+@keyframes oscilloscopeGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px rgba(34, 211, 238, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.8));
+  }
+}
+
+.oscilloscope-glow {
+  animation: oscilloscopeGlow 3s infinite ease-in-out;
+}

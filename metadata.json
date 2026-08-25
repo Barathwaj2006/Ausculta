@@ -1,0 +1,6 @@
+{
+  "name": "Ausculta",
+  "description": "Deep rhythm intelligence and smart stethoscope platform for real-time acoustic analysis, vitals monitoring, and AI diagnostic insights.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
