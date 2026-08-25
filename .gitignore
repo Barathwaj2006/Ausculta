@@ -18,3 +18,4 @@ local.properties
 *.keystore
 release-keystore.jks
 keystore.properties
+node_modules/
